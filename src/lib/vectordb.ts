@@ -32,11 +32,23 @@ export async function ensureCollection() {
       });
       console.log(`Collection "${COLLECTION}" created successfully.`);
     }
+
+    // Ensure the payload index on "docId" keyword field exists (required by Qdrant Cloud for filters)
+    try {
+      await client.createPayloadIndex(COLLECTION, {
+        field_name: 'docId',
+        field_schema: 'keyword',
+        wait: true
+      });
+    } catch (indexErr) {
+      // Ignore errors if index already exists
+    }
   } catch (err: any) {
     console.error('Failed to initialize Qdrant collection:', err.message);
     throw err;
   }
 }
+
 
 /**
  * Upserts chunks with their embedding vectors to Qdrant

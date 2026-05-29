@@ -8,6 +8,8 @@ import rateLimit from 'express-rate-limit';
 import uploadRouter from './routes/upload';
 import chatRouter from './routes/chat';
 import documentsRouter from './routes/documents';
+import { ensureCollection } from './lib/vectordb';
+
 
 dotenv.config();
 
@@ -69,10 +71,18 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`========================================`);
   console.log(` RAG Chat PDF Backend running on port ${PORT}`);
   console.log(` Qdrant DB target: ${process.env.QDRANT_URL || 'http://localhost:6333'}`);
   console.log(` Health check: http://localhost:${PORT}/health`);
   console.log(`========================================`);
+
+  try {
+    await ensureCollection();
+    console.log('Qdrant collection and keyword indices verified.');
+  } catch (err: any) {
+    console.error('Failed to initialize Qdrant at startup:', err.message);
+  }
 });
+
