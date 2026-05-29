@@ -11,6 +11,10 @@ import documentsRouter from './routes/documents';
 
 dotenv.config();
 
+// Disable TLS signature verification to bypass leaf certificate lookup failures (common in Windows dev environments)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
