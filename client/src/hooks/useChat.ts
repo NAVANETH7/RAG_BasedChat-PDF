@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Message, Chunk } from '../types';
+import type { Message, Chunk } from '../types';
+
 
 export function useChat(docId: string | null, filename: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);

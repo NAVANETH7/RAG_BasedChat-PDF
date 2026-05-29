@@ -6,8 +6,10 @@ dotenv.config();
 
 const client = new QdrantClient({
   url: process.env.QDRANT_URL || 'http://localhost:6333',
-  apiKey: process.env.QDRANT_API_KEY || undefined
+  apiKey: process.env.QDRANT_API_KEY || undefined,
+  checkCompatibility: false
 });
+
 const COLLECTION = 'pdf_chunks';
 
 const VECTOR_SIZE = 1024; // voyage-2 default output dimensions

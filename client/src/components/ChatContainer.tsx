@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, FileText, Bot, User, Loader2, Sparkles } from 'lucide-react';
-import { Message } from '../types';
+import type { Message } from '../types';
+
 import { SourceViewer } from './SourceViewer';
 
 interface ChatContainerProps {

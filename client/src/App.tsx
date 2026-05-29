@@ -3,8 +3,9 @@ import { Sidebar } from './components/Sidebar';
 import { DocumentManager } from './components/DocumentManager';
 import { ChatContainer } from './components/ChatContainer';
 import { useChat } from './hooks/useChat';
-import { DocMetadata, Message } from './types';
+import type { DocMetadata, Message } from './types';
 import { Plus, Brain } from 'lucide-react';
+
 
 function App() {
   const [documents, setDocuments] = useState<DocMetadata[]>([]);

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, File, AlertCircle, Loader, CheckCircle, Sparkles } from 'lucide-react';
-import { DocMetadata } from '../types';
+import type { DocMetadata } from '../types';
+
 
 interface DocumentManagerProps {
   onUploadSuccess: (docId: string, filename: string) => void;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, FileText, CheckCircle } from 'lucide-react';
-import { Chunk } from '../types';
+import type { Chunk } from '../types';
+
 
 interface SourceViewerProps {
   sources: Chunk[];

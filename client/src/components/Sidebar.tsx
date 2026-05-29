@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, Trash2, Database, Brain, Sparkles, MessageSquare, Plus } from 'lucide-react';
-import { DocMetadata } from '../types';
+import type { DocMetadata } from '../types';
+
 
 interface SidebarProps {
   documents: DocMetadata[];
