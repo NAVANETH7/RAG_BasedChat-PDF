@@ -4,7 +4,8 @@ import { DocumentManager } from './components/DocumentManager';
 import { ChatContainer } from './components/ChatContainer';
 import { useChat } from './hooks/useChat';
 import type { DocMetadata, Message } from './types';
-import { Plus, Brain } from 'lucide-react';
+import { Plus, Brain, FileText } from 'lucide-react';
+
 
 
 function App() {
@@ -16,9 +17,17 @@ function App() {
   // Cache chats per document to prevent losing conversation history on swap
   const [chatsCache, setChatsCache] = useState<Record<string, Message[]>>({});
 
+  // Premium Features States
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [temperature, setTemperature] = useState(0.7);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.70);
+  const [isPdfPanelOpen, setIsPdfPanelOpen] = useState(false);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfDocId, setPdfDocId] = useState<string | null>(null);
+
   const activeDoc = documents.find(d => d.id === activeDocId) || null;
 
-  // Initialize the SSE chat hook
+  // Initialize the SSE chat hook (sends 'global' as docId if global search toggle is active)
   const {
     messages,
     sendMessage,
@@ -26,7 +35,8 @@ function App() {
     error,
     clearChat,
     setMessages
-  } = useChat(activeDocId, activeDoc?.filename || null);
+  } = useChat(isGlobalSearch ? 'global' : activeDocId, activeDoc?.filename || null);
+
 
   // 1. Fetch document list on load
   const fetchDocuments = async () => {
@@ -65,14 +75,19 @@ function App() {
 
   const handleSelectDoc = (docId: string) => {
     setActiveDocId(docId);
+    setPdfDocId(docId);
+    setIsPdfPanelOpen(false); // reset panel when changing active docs
     setShowUpload(false);
   };
 
   const handleUploadSuccess = (docId: string, filename: string) => {
     fetchDocuments();
     setActiveDocId(docId);
+    setPdfDocId(docId);
+    setIsPdfPanelOpen(false);
     setShowUpload(false);
   };
+
 
   const handleDeleteDoc = async (docId: string) => {
     try {
@@ -139,14 +154,83 @@ function App() {
             />
           </div>
         ) : activeDocId && activeDoc ? (
-          <ChatContainer
-            messages={messages}
-            onSendMessage={sendMessage}
-            streaming={streaming}
-            activeDocFilename={activeDoc.filename}
-            error={error}
-          />
+          <div className="main-content-split">
+            <div className="chat-pane">
+              <ChatContainer
+                messages={messages}
+                onSendMessage={sendMessage}
+                streaming={streaming}
+                activeDocFilename={activeDoc.filename}
+                error={error}
+                temperature={temperature}
+                setTemperature={setTemperature}
+                similarityThreshold={similarityThreshold}
+                setSimilarityThreshold={setSimilarityThreshold}
+                isGlobalSearch={isGlobalSearch}
+                setIsGlobalSearch={setIsGlobalSearch}
+                onSourceClick={(pageNum, sourceDocId) => {
+                  setPdfPage(pageNum);
+                  setPdfDocId(sourceDocId);
+                  setIsPdfPanelOpen(true);
+                }}
+              />
+            </div>
+
+            {/* Premium Side-by-Side Interactive PDF Viewer */}
+            {isPdfPanelOpen && pdfDocId && (
+              <div className="pdf-pane-panel fade-in">
+                <div style={{
+                  padding: '16px 20px',
+                  borderBottom: '1px solid var(--border-glass)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'rgba(0,0,0,0.2)',
+                  minHeight: '53px'
+                }}>
+                  <span style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '80%'
+                  }}>
+                    <FileText size={14} color="var(--primary)" />
+                    {documents.find(d => d.id === pdfDocId)?.filename || 'Document'} (Page {pdfPage})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsPdfPanelOpen(false)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontWeight: 600
+                    }}
+                    className="glass-interactive"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="pdf-iframe-container">
+                  <iframe
+                    src={`/pdf-files/${pdfDocId}.pdf#page=${pdfPage}`}
+                    className="pdf-iframe"
+                    title="PDF Document Preview"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
+
           /* Empty Welcoming State (should not happen normally since showUpload is toggled) */
           <div style={{
             flex: 1,

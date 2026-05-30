@@ -5,9 +5,10 @@ import type { Chunk } from '../types';
 
 interface SourceViewerProps {
   sources: Chunk[];
+  onSourceClick?: (pageNum: number, docId: string) => void;
 }
 
-export const SourceViewer: React.FC<SourceViewerProps> = ({ sources }) => {
+export const SourceViewer: React.FC<SourceViewerProps> = ({ sources, onSourceClick }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   if (!sources || sources.length === 0) return null;
@@ -61,7 +62,10 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({ sources }) => {
             >
               {/* Accordion Trigger Header */}
               <div
-                onClick={() => toggleExpand(index)}
+                onClick={() => {
+                  toggleExpand(index);
+                  if (onSourceClick) onSourceClick(source.pageNum, source.docId);
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -72,6 +76,8 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({ sources }) => {
                 }}
                 className="glass-interactive"
               >
+
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
                   <FileText size={14} color="var(--text-muted)" />
                   <span style={{

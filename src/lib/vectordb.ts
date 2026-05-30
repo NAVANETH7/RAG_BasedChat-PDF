@@ -97,21 +97,24 @@ export async function searchSimilar(
   scoreThreshold = 0.70
 ): Promise<ScoredChunk[]> {
   try {
+    const filter = docId === 'global' ? undefined : {
+      must: [
+        {
+          key: 'docId',
+          match: {
+            value: docId
+          }
+        }
+      ]
+    };
+
     const results = await client.search(COLLECTION, {
       vector: queryVector,
       limit: topK,
-      filter: {
-        must: [
-          {
-            key: 'docId',
-            match: {
-              value: docId
-            }
-          }
-        ]
-      },
+      filter,
       score_threshold: scoreThreshold
     });
+
 
     return results.map(r => ({
       id: r.id as string,

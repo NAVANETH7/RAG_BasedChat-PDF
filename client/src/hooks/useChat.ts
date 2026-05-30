@@ -13,7 +13,11 @@ export function useChat(docId: string | null, filename: string | null) {
     setStreaming(false);
   }, []);
 
-  const sendMessage = useCallback(async (question: string) => {
+  const sendMessage = useCallback(async (
+    question: string,
+    temperature = 0.7,
+    similarityThreshold = 0.70
+  ) => {
     if (!docId) {
       setError('No active document selected.');
       return;
@@ -43,9 +47,12 @@ export function useChat(docId: string | null, filename: string | null) {
           question,
           docId,
           filename,
-          messages: historyToSend
+          messages: historyToSend,
+          temperature,
+          similarityThreshold
         }),
       });
+
 
       if (!response.ok) {
         const errText = await response.text();

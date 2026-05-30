@@ -12,7 +12,7 @@ dotenv.config();
 const router = Router();
 
 router.post('/', async (req, res) => {
-  const { question, docId, filename, messages } = req.body;
+  const { question, docId, filename, messages, temperature, similarityThreshold } = req.body;
 
   if (!question || !docId) {
     return res.status(400).json({ error: 'question and docId are required' });
@@ -39,14 +39,17 @@ router.post('/', async (req, res) => {
     console.log(`Generating embedding for question: "${question}"...`);
     const queryVector = await embedQuery(question);
 
-    // 2. Search for top-5 chunks in Qdrant with a relevance threshold (e.g., 0.70)
+    // 2. Search for top-5 chunks in Qdrant with custom/fallback relevance threshold
     console.log(`Searching Qdrant for docId: ${docId}...`);
-    const similarityThreshold = 0.70;
-    const chunks = await searchSimilar(queryVector, docId, 5, similarityThreshold);
-    console.log(`Found ${chunks.length} chunks meeting threshold.`);
+    const threshold = typeof similarityThreshold === 'number' ? similarityThreshold : 0.70;
+    const temp = typeof temperature === 'number' ? temperature : 0.7;
+    
+    const chunks = await searchSimilar(queryVector, docId, 5, threshold);
+    console.log(`Found ${chunks.length} chunks meeting threshold of ${threshold}.`);
 
     // 3. Construct the RAG prompt with the matching excerpts
-    const ragPrompt = buildRAGPrompt(question, chunks, filename || 'Document');
+    const docDisplayName = docId === 'global' ? 'all library documents' : (filename || 'Document');
+    const ragPrompt = buildRAGPrompt(question, chunks, docDisplayName);
 
     const historyMessages: Message[] = Array.isArray(messages) ? messages : [];
 
@@ -73,7 +76,12 @@ router.post('/', async (req, res) => {
         parts: [{ text: ragPrompt }]
       });
 
-      const result = await model.generateContentStream({ contents });
+      const result = await model.generateContentStream({
+        contents,
+        generationConfig: {
+          temperature: temp
+        }
+      });
 
       for await (const chunk of result.stream) {
         const token = chunk.text();
@@ -90,6 +98,7 @@ router.post('/', async (req, res) => {
       const stream = await anthropic.messages.create({
         model: modelName,
         max_tokens: 1024,
+        temperature: temp,
         messages: [
           ...formattedHistory,
           { role: 'user', content: ragPrompt }
@@ -106,6 +115,7 @@ router.post('/', async (req, res) => {
         }
       }
     }
+
 
     // 5. Emit final event containing retrieved sources for citation
     res.write(`data: ${JSON.stringify({ done: true, sources: chunks })}\n\n`);

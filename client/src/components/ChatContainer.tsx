@@ -1,25 +1,43 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Send, FileText, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { Send, FileText, Bot, User, Loader2, Sparkles, Settings, Download, Sliders, Globe } from 'lucide-react';
 import type { Message } from '../types';
 
 import { SourceViewer } from './SourceViewer';
 
+
 interface ChatContainerProps {
   messages: Message[];
-  onSendMessage: (text: string) => Promise<void>;
+  onSendMessage: (text: string, temp: number, thresh: number) => Promise<void>;
   streaming: boolean;
   activeDocFilename: string;
   error: string | null;
+  onSourceClick?: (pageNum: number) => void;
+  temperature: number;
+  setTemperature: (t: number) => void;
+  similarityThreshold: number;
+  setSimilarityThreshold: (s: number) => void;
+  isGlobalSearch: boolean;
+  setIsGlobalSearch: (g: boolean) => void;
 }
+
 
 export const ChatContainer: React.FC<ChatContainerProps> = ({
   messages,
   onSendMessage,
   streaming,
   activeDocFilename,
-  error
+  error,
+  onSourceClick,
+  temperature,
+  setTemperature,
+  similarityThreshold,
+  setSimilarityThreshold,
+  isGlobalSearch,
+  setIsGlobalSearch
 }) => {
+
   const [inputValue, setInputValue] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of messages on update
@@ -30,7 +48,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || streaming) return;
-    onSendMessage(inputValue);
+    onSendMessage(inputValue, temperature, similarityThreshold);
     setInputValue('');
   };
 
@@ -40,6 +58,38 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
       handleSubmit(e);
     }
   };
+
+  const handleExportChat = () => {
+    if (messages.length === 0) return;
+    
+    let md = `# Chat Session - RAG PDF Chat\n\n`;
+    md += `Document: ${isGlobalSearch ? 'All Library Documents (Global Search)' : activeDocFilename}\n`;
+    md += `Date: ${new Date().toLocaleString()}\n\n---\n\n`;
+    
+    messages.forEach((msg) => {
+      const roleName = msg.role === 'user' ? 'User' : 'Assistant';
+      md += `### 👤 ${roleName}:\n${msg.content}\n\n`;
+      
+      if (msg.sources && msg.sources.length > 0) {
+        md += `**Sources Cited:**\n`;
+        msg.sources.forEach((src, idx) => {
+          md += `- Excerpt ${idx + 1} (Page ${src.pageNum}, File: ${src.filename})\n`;
+        });
+        md += `\n`;
+      }
+      md += `---\n\n`;
+    });
+    
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `RAG_Chat_Export_${Date.now()}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   return (
     <div style={{
@@ -70,14 +120,131 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             whiteSpace: 'nowrap',
             color: 'var(--text-primary)'
           }}>
-            {activeDocFilename}
+            {isGlobalSearch ? 'Global Library Search (All PDFs)' : activeDocFilename}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sparkles size={12} color="var(--secondary)" className="pulse" />
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Voyage-2 + Claude-3.5 RAG</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Global Search Switch */}
+          <div 
+            onClick={() => setIsGlobalSearch(!isGlobalSearch)}
+            className={`switch-container ${isGlobalSearch ? 'active' : ''}`}
+            title="Toggle searching across all uploaded library documents"
+          >
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Globe size={13} /> Global Search
+            </span>
+            <div className="switch-track">
+              <div className="switch-thumb" />
+            </div>
+          </div>
+
+          <div style={{ height: '14px', width: '1px', background: 'var(--border-glass)' }} />
+
+          {/* Export Chat Button */}
+          <button
+            type="button"
+            onClick={handleExportChat}
+            disabled={messages.length === 0}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: messages.length === 0 ? 'var(--text-muted)' : 'var(--text-secondary)',
+              cursor: messages.length === 0 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              borderRadius: '6px',
+              transition: 'color 0.2s, background-color 0.2s'
+            }}
+            className={messages.length > 0 ? "glass-interactive" : ""}
+            title="Export conversation as Markdown"
+          >
+            <Download size={15} />
+          </button>
+
+          {/* Settings Control Button */}
+          <button
+            type="button"
+            onClick={() => setShowSettings(!showSettings)}
+            style={{
+              background: showSettings ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+              border: 'none',
+              color: showSettings ? 'var(--primary)' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              borderRadius: '6px',
+              transition: 'color 0.2s, background-color 0.2s'
+            }}
+            className="glass-interactive"
+            title="Model Parameter Settings"
+          >
+            <Settings size={15} />
+          </button>
+
+          <div style={{ height: '14px', width: '1px', background: 'var(--border-glass)' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Sparkles size={12} color="var(--secondary)" className="pulse" />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Voyage-2 + Claude/Gemini</span>
+          </div>
         </div>
       </div>
+
+      {/* Floating Settings Drawer */}
+      {showSettings && (
+        <div className="glass settings-drawer" style={{ borderColor: 'var(--border-glass-active)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+            <Sliders size={14} color="var(--primary)" />
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inference Configuration</h4>
+          </div>
+
+          {/* Temperature Slider */}
+          <div className="slider-group">
+            <div className="slider-header">
+              <span>Temperature</span>
+              <span className="slider-value">{temperature}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={temperature}
+              onChange={(e) => setTemperature(parseFloat(e.target.value))}
+              className="custom-range-slider"
+            />
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+              Lower values are factual, higher values are creative.
+            </span>
+          </div>
+
+          {/* Similarity Threshold Slider */}
+          <div className="slider-group">
+            <div className="slider-header">
+              <span>Cosine Threshold</span>
+              <span className="slider-value">{similarityThreshold}</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="0.95"
+              step="0.05"
+              value={similarityThreshold}
+              onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
+              className="custom-range-slider"
+            />
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+              Filter out search chunks below this match score.
+            </span>
+          </div>
+        </div>
+      )}
+
 
       {/* Messages Scroll Area */}
       <div style={{
@@ -188,8 +355,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                   {/* Sources cited */}
                   {msg.sources && msg.sources.length > 0 && (
-                    <SourceViewer sources={msg.sources} />
+                    <SourceViewer 
+                      sources={msg.sources} 
+                      onSourceClick={onSourceClick}
+                    />
                   )}
+
                 </div>
 
                 {/* User Icon on the right */}
